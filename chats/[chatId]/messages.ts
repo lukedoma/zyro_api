@@ -91,7 +91,8 @@ export async function GET(request: Request) {
         readBy: { $ne: user.id }
       },
       {
-        $addToSet: { readBy: user.id }
+        // $addToSet: { readBy: user.id }
+        $addToSet: { readBy: { $each: [user.id] } }
       }
     );
 

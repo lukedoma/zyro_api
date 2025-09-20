@@ -1,5 +1,5 @@
-import { getDatabase } from '@/api/lib/mongodb';
-import { getUserFromToken, getAuthHeader } from '@/api/lib/auth';
+import { getDatabase } from '../../lib/mongodb';
+import { getUserFromToken, getAuthHeader } from '../../lib/auth';
 import { ObjectId } from 'mongodb';
 
 export async function GET(request: Request) {
