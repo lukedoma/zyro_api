@@ -4,7 +4,7 @@
   "description": "Backend API for Secure Social + Creator Platform",
   "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "ts-node server.ts",
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
     "build": "tsc"
   },
@@ -24,7 +24,8 @@
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mongodb": "^5.9.0"
+    "mongodb": "^5.9.0",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
