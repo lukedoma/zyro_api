@@ -68,8 +68,8 @@ export async function POST(request: Request) {
 
     try {
       if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM) {
-        // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-        sgMail.setApiKey('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');
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        // sgMail.setApiKey('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');
         await sgMail.send({
           to: email,
           from: process.env.SENDGRID_FROM,
