@@ -7,8 +7,8 @@ if (!process.env.JWT_SECRET) {
   throw new Error('Please add your JWT_SECRET to .env.local');
 }
 
-// const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_SECRET = "your-super-secret-jwt-key-here-make-it-long-and-random";
+const JWT_SECRET = process.env.JWT_SECRET;
+// const JWT_SECRET = "your-super-secret-jwt-key-here-make-it-long-and-random";
 export interface AuthUser {
   id: string;
   email: string;
