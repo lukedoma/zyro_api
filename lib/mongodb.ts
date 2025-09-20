@@ -1,8 +1,9 @@
 import { MongoClient, Db } from "mongodb";
 
 // Load environment variables
-const uri = process.env.MONGODB_URI;
-
+// const uri = process.env.MONGODB_URI;
+// const uri = "mongodb+srv://lukekubuluvevou_db_user:ipLSQTHhmRWtzgnZ@zyrocluster.ufgzlax.mongodb.net/?retryWrites=true&w=majority&appName=ZyroCluster";
+const uri ="mongodb+srv://lukekubuluvevou_db_user:ipLSQTHhmRWtzgnZ@zyrocluster.ufgzlax.mongodb.net/?retryWrites=true&w=majority";
 if (!uri) {
   throw new Error("Please add your MongoDB URI to .env.local");
 }
