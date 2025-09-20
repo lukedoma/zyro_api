@@ -8,7 +8,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET;
-// const JWT_SECRET = "your-super-secret-jwt-key-here-make-it-long-and-random";
+
 export interface AuthUser {
   id: string;
   email: string;
