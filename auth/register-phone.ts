@@ -1,76 +1,67 @@
-import { getDatabase } from '../lib/mongodb';
-import { hashPassword } from '../lib/auth';
-import { generateKeyPair } from '../lib/encryption';
+import { Request, Response } from "express";
+import { getDatabase } from "../lib/mongodb";
+import { hashPassword } from "../lib/auth";
+import crypto from "crypto";
 
-export async function POST(request: Request) {
+export default async function registerPhone(req: Request, res: Response) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   try {
-    const { countryCode, phoneNumber, name, password } = await request.json();
+    const { fullName, phone, password } = req.body;
 
-    if (!countryCode || !phoneNumber) {
-      return Response.json({ error: 'Country code and phone number are required' }, { status: 400 });
+    if (!fullName || !phone || !password) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 6 characters" });
     }
 
     const db = await getDatabase();
 
-    const existingUser = await db.collection('users').findOne({ phone_number: phoneNumber });
+    const existingUser = await db.collection("users").findOne({ phone });
     if (existingUser) {
-      return Response.json({ error: 'User already exists with this phone number' }, { status: 409 });
+      return res
+        .status(409)
+        .json({ error: "User already exists with this phone number" });
     }
 
-    const username = `user${Math.random().toString(36).slice(2, 8)}`;
+    const username =
+      phone.replace(/\D/g, "") + Math.random().toString(36).substring(2, 6);
+    const hashedPassword = await hashPassword(password);
 
-    let hashedPassword: string | null = null;
-    if (password && typeof password === 'string' && password.length >= 6) {
-      hashedPassword = await hashPassword(password);
-    }
-
-    const { publicKey, privateKey } = generateKeyPair();
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 10);
+    const verificationCode = crypto.randomInt(100000, 999999); // 6-digit code
+    const verificationExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
 
     const user = {
-      phone_number: phoneNumber,
-      country_code: countryCode,
-      email: null,
+      phone,
       username,
-      displayName: name ?? username,
+      displayName: fullName,
       password: hashedPassword,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
       isVerified: false,
-      isCreator: false,
-      followers: 0,
-      following: 0,
-      publicKey,
-      privateKey,
-      verification_code: otp,
-      verification_expiresAt: expiresAt,
+      verification_code: verificationCode,
+      verification_expiresAt: verificationExpiresAt,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as const;
+    };
 
-    const result = await db.collection('users').insertOne(user);
+    const result = await db.collection("users").insertOne(user);
 
-    try {
-      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) {
-        const twilioMod: any = await import('twilio');
-        const twilioFn: any = (twilioMod && twilioMod.default) ? twilioMod.default : twilioMod;
-        const client = twilioFn(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-        await client.messages.create({
-          from: process.env.TWILIO_FROM,
-          to: phoneNumber,
-          body: `Your verification code is ${otp}`,
-        });
-      } else {
-        console.warn('Twilio env not set; skipping SMS send');
-      }
-    } catch (smsErr) {
-      console.error('Twilio SMS error:', smsErr);
-    }
+    // Here you could integrate SMS sending via Twilio or other provider
+    console.log("DEV phone verification code:", verificationCode);
 
-    return Response.json({ success: true, userId: result.insertedId.toString(), phoneNumber });
-  } catch (error) {
-    console.error('Phone registration error:', error);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
+    res.status(201).json({
+      message: "Verification code sent to phone",
+      dev: { code: verificationCode },
+      userId: result.insertedId.toString(),
+      phone,
+    });
+  } catch (err) {
+    console.error("Phone registration error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 }

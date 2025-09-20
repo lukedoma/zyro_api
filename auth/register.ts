@@ -1,38 +1,40 @@
-import { getDatabase } from '../lib/mongodb';
-import { hashPassword } from '../lib/auth';
-import { generateKeyPair } from '../lib/encryption';
-import crypto from 'crypto';
-import sgMail from '@sendgrid/mail';
+import { Request, Response } from "express";
+import { getDatabase } from "../lib/mongodb";
+import { hashPassword } from "../lib/auth";
+import { generateKeyPair } from "../lib/encryption";
+import crypto from "crypto";
+import sgMail from "@sendgrid/mail";
 
-export async function POST(request: Request) {
+export default async function register(req: Request, res: Response) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   try {
-    const { fullName, email, password } = await request.json();
+    const { fullName, email, password } = req.body;
 
     if (!fullName || !email || !password) {
-      return Response.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     if (password.length < 6) {
-      return Response.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      );
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 6 characters" });
     }
 
     const db = await getDatabase();
 
-    const existingUser = await db.collection('users').findOne({ email });
+    const existingUser = await db.collection("users").findOne({ email });
     if (existingUser) {
-      return Response.json(
-        { error: 'User already exists with this email' },
-        { status: 409 }
-      );
+      return res
+        .status(409)
+        .json({ error: "User already exists with this email" });
     }
 
-    const username = email.split('@')[0].toLowerCase() + Math.random().toString(36).substring(2, 6);
+    const username =
+      email.split("@")[0].toLowerCase() +
+      Math.random().toString(36).substring(2, 6);
 
     const hashedPassword = await hashPassword(password);
 
@@ -57,48 +59,38 @@ export async function POST(request: Request) {
       verification_expiresAt: verificationExpiresAt,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as const;
+    };
 
-    const result = await db.collection('users').insertOne(user);
+    const result = await db.collection("users").insertOne(user);
 
-    const origin = request.headers.get('origin') ?? process.env.PUBLIC_BASE_URL ?? '';
-    const verificationLink = `${origin}/verify?method=email&code=${verificationCode}&email=${encodeURIComponent(email)}`;
+    const origin = req.headers.origin || process.env.PUBLIC_BASE_URL || "";
+    const verificationLink = `${origin}/verify?method=email&code=${verificationCode}&email=${encodeURIComponent(
+      email
+    )}`;
 
-    console.log('DEV email verification link:', verificationLink);
+    console.log("DEV email verification link:", verificationLink);
 
-    try {
-      if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM) {
-        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM) {
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-        await sgMail.send({
-          to: email,
-          from: process.env.SENDGRID_FROM,
-          subject: 'Verify your account',
-          html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height:1.6;">
-            <h2>Welcome, ${fullName}!</h2>
-            <p>Thanks for signing up. Please verify your email to activate your account.</p>
-            <p><a href="${verificationLink}" style="display:inline-block;padding:12px 18px;background:#0ea5e9;color:#fff;border-radius:10px;text-decoration:none;">Verify Email</a></p>
-            <p>Or copy this link: <br/><a href="${verificationLink}">${verificationLink}</a></p>
-          </div>`
-        });
-      } else {
-        console.warn('SENDGRID env not set; skipping email send');
-      }
-    } catch (mailErr) {
-      console.error('SendGrid error:', mailErr);
+      await sgMail.send({
+        to: email,
+        from: process.env.SENDGRID_FROM,
+        subject: "Verify your account",
+        html: `<div>Click <a href="${verificationLink}">here</a> to verify your account.</div>`,
+      });
+    } else {
+      console.warn("SENDGRID env not set; skipping email send");
     }
 
-    return Response.json({
-      message: 'Verification email sent. Please check your inbox to verify your account.',
+    res.status(201).json({
+      message: "Verification email sent",
       dev: { code: verificationCode, link: verificationLink },
       userId: result.insertedId.toString(),
       email,
     });
-  } catch (error) {
-    console.error('Registration error:', error);
-    return Response.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("Registration error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 }
